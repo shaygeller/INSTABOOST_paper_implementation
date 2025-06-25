@@ -1,6 +1,8 @@
 INSTABOOST - Paper Implementation
 
-This is my attempt to implement the paper - "Instruction Following by Boosting Attention of Large Language Models", by Vitoria Guardieiro, Adam Stein, Avishree Khare, Eric Wong (2025).
+This is my attempt to implement the paper:
+
+"Instruction Following by Boosting Attention of Large Language Models", by Vitoria Guardieiro, Adam Stein, Avishree Khare, Eric Wong (2025).
 
 Citation:
 arXiv:2506.13734 [cs.CL]
