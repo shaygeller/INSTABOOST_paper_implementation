@@ -116,6 +116,9 @@ This project implements the INSTABOOST technique described in the paper "Instruc
    - Make atomic, focused commits
    - Use descriptive commit messages
    - Create branches for significant changes
+   - Always move all changes to a new branch, commit them, and push to GitHub
+   - Never commit directly to the main branch
+   - Create pull requests for code review before merging
 
 ## Performance Considerations
 
