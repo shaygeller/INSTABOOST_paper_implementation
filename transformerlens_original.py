@@ -15,9 +15,13 @@ import torch
 from typing import Optional
 from transformer_lens import HookedTransformer
 from dotenv import load_dotenv
+from utils import load_config, get_device
 
 # Load environment variables
 load_dotenv()
+
+# Load configuration
+config = load_config()
 
 class OriginalTransformerLens:
     """
@@ -40,12 +44,9 @@ class OriginalTransformerLens:
         """
         # Determine device if not specified
         if device is None:
-            self.device = "cuda" if torch.cuda.is_available() else \
-                         "mps" if torch.backends.mps.is_available() else "cpu"
+            self.device = get_device()
         else:
             self.device = device
-            
-        print(f"Using device: {self.device}")
         
         # Load tokenizer and model from local cache if possible
         print(f"Loading model: {model_name}")
@@ -136,30 +137,50 @@ if __name__ == "__main__":
     if huggingface_token:
         login(token=huggingface_token, add_to_git_credential=False)
     
-    # Load the Llama model from local files
-    model_name = "meta-llama/Llama-3.2-1B-Instruct"
-    model_path = "./Llama-3.2-1B-Instruct"
+    # Get model parameters from config
+    model_config = config.get("model", {})
+    generation_config = config.get("generation", {})
+    
+    # Get model name from config or environment variable
+    model_name = os.getenv("MODEL_NAME", model_config.get("name", "meta-llama/Llama-3.2-1B-Instruct"))
+    
+    # Get device from config or auto-detect
+    device = get_device()
+    
+    # Get model path from environment variable
+    model_path = os.getenv("MODEL_PATH", None)
+    
+    print("\n=== Configuration ===")
+    print(f"Model: {model_name}")
+    print(f"Device: {device}")
+    print(f"Model path: {model_path}")
     
     # Initialize the original model
     original_model = OriginalTransformerLens(
         model_name=model_name,
         model_path=model_path,
-        device="cpu"  # Use CPU for testing
+        device=device
     )
     
     # Example generation
     instruction = "You are a helpful, harmless, and honest assistant."
     query = "What is the capital of France?"
     
-    # Get parameters from environment variables
-    temperature = float(os.getenv("TEMPERATURE", 0.1))
-    max_new_tokens = int(os.getenv("MAX_NEW_TOKENS", 100))
+    # Get generation parameters from config or environment variables
+    temperature = float(os.getenv("TEMPERATURE", generation_config.get("temperature", 0.0)))
+    max_new_tokens = int(os.getenv("MAX_NEW_TOKENS", generation_config.get("max_new_tokens", 100)))
+    top_p = float(os.getenv("TOP_P", generation_config.get("top_p", 1.0)))
+    
+    print(f"Temperature: {temperature}")
+    print(f"Max new tokens: {max_new_tokens}")
+    print(f"Top p: {top_p}")
     
     # Generate text
     generated_text = original_model.generate(
         instruction=instruction,
         query=query,
         temperature=temperature,
+        top_p=top_p,
         do_sample=temperature > 0,
         max_new_tokens=max_new_tokens
     )

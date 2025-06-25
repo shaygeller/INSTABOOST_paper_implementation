@@ -11,19 +11,24 @@ import ssl
 import csv
 import time
 import datetime
+import torch
 from dotenv import load_dotenv
 from huggingface_hub import login
 from typing import Dict, Tuple, List, Any
+from utils import load_config, get_device
 
 # Set SSL context for HTTPS connections
 ssl._create_default_https_context = ssl._create_unverified_context
+
+# Load configuration
+config = load_config()
 
 # Import the model implementations
 from transformerlens_original import OriginalTransformerLens
 from transformerlens_instaboost import InstaBoostTransformerLens
 
 # Import the test cases and parameters
-from instaboost_test_cases import FINANCIAL_DATA_TEST, ALL_TEST_CASES
+from tests.instaboost_test_cases import FINANCIAL_DATA_TEST, ALL_TEST_CASES
 
 def compare_outputs(original_text: str, all_layers_text: str, middle_layers_text: str, query: str) -> Dict[str, Any]:
     """
@@ -129,6 +134,7 @@ def run_test_case(
     multiplier = model_params["multiplier"]
     temperature = model_params["temperature"]
     max_new_tokens = model_params["max_new_tokens"]
+    top_p = model_params.get("top_p", 1.0)
     
     # Generate with the original model
     print("Generating with original model...")
@@ -136,6 +142,7 @@ def run_test_case(
         instruction=test_case["instruction"],
         query=test_case["query"],
         temperature=temperature,
+        top_p=top_p,
         do_sample=temperature > 0,
         max_new_tokens=max_new_tokens
     )
@@ -149,6 +156,7 @@ def run_test_case(
         query=test_case["query"],
         multiplier=multiplier,
         temperature=temperature,
+        top_p=top_p,
         do_sample=temperature > 0,
         max_new_tokens=max_new_tokens
     )
@@ -161,6 +169,7 @@ def run_test_case(
         query=test_case["query"],
         multiplier=multiplier,
         temperature=temperature,
+        top_p=top_p,
         do_sample=temperature > 0,
         max_new_tokens=max_new_tokens
     )
@@ -324,15 +333,25 @@ if __name__ == "__main__":
     # Run all tests
     print("Running INSTABOOST tests...")
 
+    # Get parameters from config.yaml or environment variables
+    model_config = config.get("model", {})
+    instaboost_config = config.get("instaboost", {})
+    generation_config = config.get("generation", {})
+    testing_config = config.get("testing", {})
+    
+    # Get device from config or auto-detect
+    device = get_device()
+    
     # Global parameters for the models
     test_params = {
-        "model_name": "meta-llama/Llama-3.2-1B-Instruct",
-        "device": "cpu",
-        "multiplier": 20.0,        # The attention multiplier for INSTABOOST
-        "temperature": 0,       # Very low temperature for near-deterministic output
-        "max_new_tokens": 150,     # The maximum number of new tokens to generate
-        "num_middle_layers": 6,    # The number of middle layers to boost
-        "num_runs": 1,             # Number of times to run each test
+        "model_name": os.getenv("MODEL_NAME", model_config.get("name", "meta-llama/Llama-3.2-1B-Instruct")),
+        "device": device,
+        "multiplier": float(os.getenv("MULTIPLIER", instaboost_config.get("multiplier", 10.0))),
+        "temperature": float(os.getenv("TEMPERATURE", generation_config.get("temperature", 0.0))),
+        "top_p": float(os.getenv("TOP_P", generation_config.get("top_p", 1.0))),
+        "max_new_tokens": int(os.getenv("MAX_NEW_TOKENS", generation_config.get("max_new_tokens", 150))),
+        "num_middle_layers": int(os.getenv("NUM_MIDDLE_LAYERS", instaboost_config.get("num_middle_layers", 5))),
+        "num_runs": int(os.getenv("NUM_RUNS", testing_config.get("num_runs", 1))),
     }
     print(f"Using parameters: {test_params}")
     
