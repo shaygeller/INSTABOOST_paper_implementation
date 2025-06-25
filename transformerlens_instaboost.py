@@ -17,15 +17,16 @@ import random
 from typing import List, Tuple, Union, Dict, Optional, Set
 from transformer_lens import HookedTransformer
 from dotenv import load_dotenv
+from utils import load_config, setup_random_seed, get_device
 
 # Load environment variables
 load_dotenv()
 
-# Set random seed for reproducibility
-RANDOM_SEED = 42
-random.seed(RANDOM_SEED)
-np.random.seed(RANDOM_SEED)
-torch.manual_seed(RANDOM_SEED)
+# Set up random seed
+RANDOM_SEED = setup_random_seed()
+
+# Load configuration
+config = load_config()
 
 class InstaBoostTransformerLens:
     """
@@ -58,12 +59,9 @@ class InstaBoostTransformerLens:
         """
         # Determine device if not specified
         if device is None:
-            self.device = "cuda" if torch.cuda.is_available() else \
-                         "mps" if torch.backends.mps.is_available() else "cpu"
+            self.device = get_device()
         else:
             self.device = device
-            
-        print(f"Using device: {self.device}")
         
         # Load tokenizer and model from local cache if possible
         print(f"Loading model: {model_name}")
@@ -169,8 +167,12 @@ class InstaBoostTransformerLens:
         for layer_idx in self.layers_to_boost:
             # Use a fixed seed based on the layer index to ensure consistency
             # but different heads for different layers
-            layer_seed = RANDOM_SEED + layer_idx
-            random.seed(layer_seed)
+            if RANDOM_SEED is not None:
+                layer_seed = RANDOM_SEED + layer_idx
+                random.seed(layer_seed)
+                print(f"Using seed {layer_seed} for layer {layer_idx}")
+            else:
+                print(f"Using random selection for layer {layer_idx}")
             
             # Randomly select heads_per_layer heads from range(num_heads)
             selected_heads = set(random.sample(range(num_heads), heads_per_layer))
@@ -322,21 +324,54 @@ if __name__ == "__main__":
     if huggingface_token:
         login(token=huggingface_token, add_to_git_credential=False)
     
-    # Load the Llama model from local files
-    model_name = "meta-llama/Llama-3.2-1B-Instruct"
+    # Get model parameters from config
+    model_name = os.getenv("MODEL_NAME", config.get("model", {}).get("name", "meta-llama/Llama-3.2-1B-Instruct"))
     
-    # Get parameters from environment variables
-    multiplier = 10
-    temperature = 0.1
-    max_new_tokens = 100
+    # Get device from config or auto-detect
+    device = get_device()
+    
+    # Get INSTABOOST parameters from config
+    instaboost_config = config.get("instaboost", {})
+    boost_middle_layers_only = os.getenv("BOOST_MIDDLE_LAYERS_ONLY", 
+                                         instaboost_config.get("boost_middle_layers_only", True))
+    num_middle_layers = int(os.getenv("NUM_MIDDLE_LAYERS", 
+                                      instaboost_config.get("num_middle_layers", 5)))
+    start_layer = int(os.getenv("START_LAYER", 
+                                instaboost_config.get("start_layer", 8)))
+    head_boost_percentage = float(os.getenv("HEAD_BOOST_PERCENTAGE", 
+                                           instaboost_config.get("head_boost_percentage", 0.2)))
+    
+    # Get generation parameters from config
+    generation_config = config.get("generation", {})
+    multiplier = float(os.getenv("MULTIPLIER", 
+                                instaboost_config.get("multiplier", 10.0)))
+    temperature = float(os.getenv("TEMPERATURE", 
+                                 generation_config.get("temperature", 0.0)))
+    max_new_tokens = int(os.getenv("MAX_NEW_TOKENS", 
+                                  generation_config.get("max_new_tokens", 100)))
+    top_p = float(os.getenv("TOP_P", 
+                           generation_config.get("top_p", 1.0)))
+    
+    print("\n=== Configuration ===")
+    print(f"Model: {model_name}")
+    print(f"Device: {device}")
+    print(f"Boost middle layers only: {boost_middle_layers_only}")
+    print(f"Number of middle layers: {num_middle_layers}")
+    print(f"Start layer: {start_layer}")
+    print(f"Head boost percentage: {head_boost_percentage}")
+    print(f"Multiplier: {multiplier}")
+    print(f"Temperature: {temperature}")
+    print(f"Max new tokens: {max_new_tokens}")
+    print(f"Top p: {top_p}")
     
     # Initialize the INSTABOOST model
     instaboost_model = InstaBoostTransformerLens(
         model_name=model_name,
-        device="cpu",  # Use CPU for testing
-        boost_middle_layers_only=True,  # Only boost specific layers
-        num_middle_layers=5,  # Boost 5 layers
-        start_layer=8  # Start boosting from layer 8
+        device=device,
+        boost_middle_layers_only=boost_middle_layers_only,
+        num_middle_layers=num_middle_layers,
+        start_layer=start_layer,
+        head_boost_percentage=head_boost_percentage
     )
     
     # Example generation
@@ -350,7 +385,8 @@ if __name__ == "__main__":
         multiplier=multiplier,
         temperature=temperature,
         do_sample=temperature > 0,
-        max_new_tokens=max_new_tokens
+        max_new_tokens=max_new_tokens,
+        top_p=top_p
     )
     
     print("\n=== Generated Text with INSTABOOST ===")
