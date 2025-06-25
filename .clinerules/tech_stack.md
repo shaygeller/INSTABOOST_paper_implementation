@@ -119,6 +119,8 @@ This project implements the INSTABOOST technique described in the paper "Instruc
    - Always move all changes to a new branch, commit them, and push to GitHub
    - Never commit directly to the main branch
    - Create pull requests for code review before merging
+   - After each push, return to the main branch in the terminal
+   - Do not reuse branches that have been pushed before; create a new branch for each set of changes
 
 ## Performance Considerations
 
