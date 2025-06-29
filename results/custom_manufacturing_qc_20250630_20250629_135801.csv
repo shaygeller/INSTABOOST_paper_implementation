@@ -1,0 +1,112 @@
+test_case,instruction,query,original_length,all_layers_length,middle_layers_length,original_output,all_layers_output,middle_layers_output
+Manufacturing - Quality Control Analysis with Simple JSON Extraction (Simple),"
+You are a manufacturing quality control AI assistant. Analyze the provided sensor data and help identify potential issues.
+
+ANALYSIS GUIDELINES:
+1. Identify any values that fall outside the acceptable ranges
+2. Suggest possible causes for the anomalies
+3. Recommend appropriate corrective actions
+4. Be concise and specific in your analysis
+
+Extract your findings into a structured JSON format as specified in the query.
+","
+Here are the latest sensor readings from our automotive parts production line. Please analyze them and identify any potential quality issues:
+
+Temperature Sensors (acceptable range: 68-72°F):
+- Station 1: 70.2°F
+- Station 2: 71.5°F
+- Station 3: 73.8°F
+- Station 4: 69.1°F
+
+Pressure Readings (acceptable range: 95-105 PSI):
+- Hydraulic Press 1: 99.7 PSI
+- Hydraulic Press 2: 102.3 PSI
+- Hydraulic Press 3: 94.2 PSI
+- Hydraulic Press 4: 106.8 PSI
+
+Extract your analysis into a JSON object with the following structure:
+{
+  ""issues"": [
+    {
+      ""station"": ""string"",
+      ""reading"": ""number"",
+      ""acceptable_range"": ""string"",
+      ""status"": ""bad|fair|good|excellent""
+    }
+  ],
+  ""summary"": ""string""
+}
+
+Answer only with the JSON object.
+
+Answer:
+",441,442,442,"```json
+{
+  ""issues"": [
+    {
+      ""station"": ""Station 1"",
+      ""reading"": 70.2,
+      ""acceptable_range"": ""70-72°F"",
+      ""status"": ""bad""
+    },
+    {
+      ""station"": ""Station 2"",
+      ""reading"": 71.5,
+      ""acceptable_range"": ""71-73°F"",
+      ""status"": ""fair""
+    },
+    {
+      ""station"": ""Station 3"",
+      ""reading"": 73.8,
+      ""acceptable_range"": ""73-75°F"",
+      ""status"": ""bad""
+    },
+    {
+      ""station"": ""Station 4"",
+     ","```json
+{
+  ""issues"": [
+    {
+      ""station"": ""Station 1"",
+      ""reading"": 70.2,
+      ""acceptable_range"": ""70-72°F"",
+      ""status"": ""bad""
+    },
+    {
+      ""station"": ""Station 2"",
+      ""reading"": 71.5,
+      ""acceptable_range"": ""71-75°F"",
+      ""status"": ""fair""
+    },
+    {
+      ""station"": ""Station 3"",
+      ""reading"": 73.8,
+      ""acceptable_range"": ""73-76°F"",
+      ""status"": ""fair""
+    },
+    {
+      ""station"": ""Station 4"",
+     ","```json
+{
+  ""issues"": [
+    {
+      ""station"": ""Station 1"",
+      ""reading"": 70.2,
+      ""acceptable_range"": ""70-72°F"",
+      ""status"": ""bad""
+    },
+    {
+      ""station"": ""Station 2"",
+      ""reading"": 71.5,
+      ""acceptable_range"": ""71-73°F"",
+      ""status"": ""fair""
+    },
+    {
+      ""station"": ""Station 3"",
+      ""reading"": 73.8,
+      ""acceptable_range"": ""73-75°F"",
+      ""status"": ""fair""
+    },
+    {
+      ""station"": ""Station 4"",
+     "

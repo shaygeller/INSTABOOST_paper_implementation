@@ -1,9 +1,9 @@
 """
-Original TransformerLens Model Implementation
+Original Model Implementation Using Hugging Face Transformers
 
-This module provides a wrapper for the original TransformerLens model without any
-attention boosting. It serves as a baseline for comparison with the INSTABOOST
-implementation.
+This module provides a wrapper for the original model using Hugging Face's transformers
+library directly without TransformerLens. It serves as a baseline for comparison with
+the INSTABOOST implementation.
 """
 
 import os
@@ -13,7 +13,7 @@ ssl._create_default_https_context = ssl._create_unverified_context
     
 import torch
 from typing import Optional
-from transformer_lens import HookedTransformer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from dotenv import load_dotenv
 from utils import load_config, get_device
 
@@ -23,9 +23,10 @@ load_dotenv()
 # Load configuration
 config = load_config()
 
-class OriginalTransformerLens:
+class HFModel:
     """
-    Wrapper for the original TransformerLens model without any attention boosting.
+    Hugging Face's transformers library directly.
+    This class provides a baseline implementation without any attention boosting.
     """
     
     def __init__(
@@ -35,10 +36,10 @@ class OriginalTransformerLens:
         device: Optional[str] = None,
     ):
         """
-        Initialize the original model instance with a TransformerLens model.
+        Initialize the original model instance with a Hugging Face model.
         
         Args:
-            model_name: The model name to load with TransformerLens
+            model_name: The model name to load from Hugging Face
             model_path: Path to local model files (if None, will try to load from cache)
             device: Device to load the model on ('cuda', 'mps', or 'cpu')
         """
@@ -54,31 +55,44 @@ class OriginalTransformerLens:
             # Try to load from local path if provided
             if model_path:
                 print(f"Attempting to load from local path: {model_path}")
-                self.model = HookedTransformer.from_pretrained(
-                    model_name,
-                    device=self.device,
-                    hf_path=model_path
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    model_path if model_path else model_name,
+                    device_map=self.device,
+                    torch_dtype=torch.float16 if self.device != "cpu" else torch.float32,
+                    trust_remote_code=True
+                )
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    model_path if model_path else model_name,
+                    trust_remote_code=True
                 )
             else:
                 # Try to load from cache
                 print(f"Attempting to load from cache")
-                self.model = HookedTransformer.from_pretrained(
+                self.model = AutoModelForCausalLM.from_pretrained(
                     model_name,
-                    device=self.device,
-                    use_cache=True
+                    device_map=self.device,
+                    torch_dtype=torch.float16 if self.device != "cpu" else torch.float32,
+                    trust_remote_code=True
+                )
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    model_name,
+                    trust_remote_code=True
                 )
             print(f"Successfully loaded model from local files")
         except Exception as e:
             print(f"Error loading model from local files: {e}")
             print("Falling back to downloading from Hugging Face Hub...")
-            self.model = HookedTransformer.from_pretrained(
+            self.model = AutoModelForCausalLM.from_pretrained(
                 model_name,
-                device=self.device
+                device_map=self.device,
+                torch_dtype=torch.float16 if self.device != "cpu" else torch.float32,
+                trust_remote_code=True
+            )
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                model_name,
+                trust_remote_code=True
             )
             print(f"Successfully loaded model from Hugging Face Hub")
-        
-        # Get the tokenizer
-        self.tokenizer = self.model.tokenizer
         
         print(f"Successfully loaded model and tokenizer")
     
@@ -112,13 +126,27 @@ class OriginalTransformerLens:
         input_tokens = self.tokenizer.encode(full_prompt, return_tensors="pt").to(self.device)
         
         # Generate with the model
-        output = self.model.generate(
-            input_tokens,  # TransformerLens uses positional args, not input_ids
-            max_new_tokens=max_new_tokens,
-            temperature=temperature,
-            top_p=top_p,
-            do_sample=do_sample,
-        )
+        with torch.no_grad():
+            # Create attention mask (all 1s for input tokens)
+            attention_mask = torch.ones_like(input_tokens)
+            
+            # Set up generation parameters
+            generation_config = {
+                "max_new_tokens": max_new_tokens,
+                "top_p": top_p,
+                "pad_token_id": self.tokenizer.eos_token_id,
+                "attention_mask": attention_mask
+            }
+            
+            # Add temperature only if sampling is enabled
+            if do_sample:
+                generation_config["do_sample"] = True
+                generation_config["temperature"] = temperature
+            
+            output = self.model.generate(
+                input_tokens,
+                **generation_config
+            )
         
         # Decode the output
         output_text = self.tokenizer.decode(output[0], skip_special_tokens=True)
@@ -156,7 +184,7 @@ if __name__ == "__main__":
     print(f"Model path: {model_path}")
     
     # Initialize the original model
-    original_model = OriginalTransformerLens(
+    original_model = HFModel(
         model_name=model_name,
         model_path=model_path,
         device=device

@@ -5,6 +5,15 @@ This module provides test cases for evaluating the effectiveness of INSTABOOST
 in improving instruction following, as well as global parameters for the models.
 """
 
+# Import the test cases
+from tests.json_extraction_test_cases import JSON_EXTRACTION_TEST_CASES
+from tests.multi_choice_test_cases import MULTI_CHOICE_TEST_CASES
+from tests.instruction_conflict_tests import INSTRUCTION_CONFLICT_TEST_CASES
+from tests.format_adherence_tests import FORMAT_ADHERENCE_TEST_CASES
+from tests.context_length_tests import CONTEXT_LENGTH_TEST_CASES
+from tests.instruction_precision_tests import INSTRUCTION_PRECISION_TEST_CASES
+from tests.distraction_resistance_tests import DISTRACTION_RESISTANCE_TEST_CASES
+
 # Global parameters for the models
 MODEL_PARAMS = {
     "multiplier": 10.0,        # The attention multiplier for INSTABOOST
@@ -496,4 +505,25 @@ ALL_TEST_CASES = [
     # Dual guideline test
     # SECURITY_DUAL_TEST_VIOLATING,
     # SECURITY_DUAL_TEST_COMPLIANT,
+    
+    # JSON extraction test cases
+    *JSON_EXTRACTION_TEST_CASES,
+    
+    # Multi-choice extraction test cases
+    *MULTI_CHOICE_TEST_CASES,
+    
+    # Instruction conflict test cases
+    *INSTRUCTION_CONFLICT_TEST_CASES,
+    
+    # Format adherence test cases
+    *FORMAT_ADHERENCE_TEST_CASES,
+    
+    # Context length sensitivity test cases
+    *CONTEXT_LENGTH_TEST_CASES,
+    
+    # Instruction precision test cases
+    *INSTRUCTION_PRECISION_TEST_CASES,
+    
+    # Distraction resistance test cases
+    *DISTRACTION_RESISTANCE_TEST_CASES,
 ]

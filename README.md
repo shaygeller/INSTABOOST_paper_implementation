@@ -31,6 +31,28 @@ For accessing gated models like Llama, create a `.env` file with your Hugging Fa
 HUGGINGFACE_TOKEN=your_token_here
 ```
 
+### Downloading Models
+
+The repository includes a script to download models from Hugging Face:
+
+```bash
+# Set your Hugging Face token as an environment variable
+export HUGGINGFACE_TOKEN=your_token_here  # On Windows: set HUGGINGFACE_TOKEN=your_token_here
+
+# Run the download script
+python download_models.py
+```
+
+This will download the following models to your local Hugging Face cache:
+- meta-llama/Meta-Llama-3-8B-Instruct
+- mistralai/Mistral-7B-Instruct-v0.3
+- Qwen/Qwen1.5-7B-Chat
+- Qwen/Qwen2.5-0.5B-Instruct
+- HuggingFaceTB/SmolLM2-360M-Instruct
+- TinyLlama/TinyLlama-1.1B-Chat-v1.0
+
+Some models (like Llama) require authentication with a valid Hugging Face token.
+
 ## Usage
 
 ### Configuration
@@ -87,8 +109,8 @@ This will:
 
 ## Project Structure
 
-- `transformerlens_instaboost.py`: Main implementation of INSTABOOST
-- `transformerlens_original.py`: Original model implementation for comparison
+- `transformerlens_instaboost.py`: Main implementation of INSTABOOST using TransformerLens
+- `transformerlens_original.py`: Original model implementation using Hugging Face Transformers directly
 - `run_instaboost_tests.py`: Script to run tests and compare results
 - `utils.py`: Utility functions for configuration and device management
 - `config.yaml`: Configuration file for model and INSTABOOST parameters

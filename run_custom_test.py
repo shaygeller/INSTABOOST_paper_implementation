@@ -1,9 +1,21 @@
 """
-INSTABOOST Test Runner
+INSTABOOST Custom Test Runner
 
-This module provides functions for running tests to compare the original model
-with the INSTABOOST model (both all layers and middle layers only) on various
-instruction following tasks.
+This module provides a customizable test runner that allows running a single test case
+of your choice for quick experimentation and verification that the code runs properly.
+
+Usage:
+    python run_custom_test.py [--test_case MANUFACTURING_QC_TEST]
+    
+    Arguments:
+    --test_case TEST_CASE_NAME   Test case to run (default: MANUFACTURING_QC_TEST)
+    
+    Optional arguments:
+    --model_name MODEL_NAME      Model name to use (default: from config.yaml)
+    --multiplier MULTIPLIER      Attention multiplier for INSTABOOST (default: from config.yaml)
+    --temperature TEMPERATURE    Temperature for generation (default: from config.yaml)
+    --max_new_tokens MAX_TOKENS  Maximum number of tokens to generate (default: from config.yaml)
+    --num_middle_layers LAYERS   Number of middle layers to boost (default: from config.yaml)
 """
 
 import os
@@ -11,6 +23,7 @@ import ssl
 import csv
 import time
 import datetime
+import argparse
 import torch
 from dotenv import load_dotenv
 from huggingface_hub import login
@@ -27,8 +40,36 @@ config = load_config()
 from hf_model import HFModel
 from transformerlens_instaboost import InstaBoostTransformerLens
 
-# Import the test cases and parameters
-from tests.instaboost_test_cases import FINANCIAL_DATA_TEST, ALL_TEST_CASES
+# Import all test cases
+from tests.instaboost_test_cases import (
+    MANUFACTURING_QC_TEST,
+    ENERGY_ANALYSIS_TEST,
+    EDUCATION_CONTENT_TEST,
+    FINANCIAL_DATA_TEST,
+    HEALTHCARE_DATA_TEST,
+    LEGAL_RESEARCH_TEST,
+    ECOMMERCE_REVIEW_TEST,
+    SQL_INJECTION_TEST,
+    PROPER_SQL_QUERY_TEST,
+    SECURITY_DUAL_TEST_VIOLATING,
+    SECURITY_DUAL_TEST_COMPLIANT,
+    ALL_TEST_CASES
+)
+
+# Dictionary mapping test case names to test case objects
+TEST_CASES = {
+    "MANUFACTURING_QC_TEST": MANUFACTURING_QC_TEST,
+    "ENERGY_ANALYSIS_TEST": ENERGY_ANALYSIS_TEST,
+    "EDUCATION_CONTENT_TEST": EDUCATION_CONTENT_TEST,
+    "FINANCIAL_DATA_TEST": FINANCIAL_DATA_TEST,
+    "HEALTHCARE_DATA_TEST": HEALTHCARE_DATA_TEST,
+    "LEGAL_RESEARCH_TEST": LEGAL_RESEARCH_TEST,
+    "ECOMMERCE_REVIEW_TEST": ECOMMERCE_REVIEW_TEST,
+    "SQL_INJECTION_TEST": SQL_INJECTION_TEST,
+    "PROPER_SQL_QUERY_TEST": PROPER_SQL_QUERY_TEST,
+    "SECURITY_DUAL_TEST_VIOLATING": SECURITY_DUAL_TEST_VIOLATING,
+    "SECURITY_DUAL_TEST_COMPLIANT": SECURITY_DUAL_TEST_COMPLIANT
+}
 
 def compare_outputs(original_text: str, all_layers_text: str, middle_layers_text: str, query: str) -> Dict[str, Any]:
     """
@@ -47,45 +88,6 @@ def compare_outputs(original_text: str, all_layers_text: str, middle_layers_text
     print(f"Original output length: {len(original_text)} characters")
     print(f"All layers output length: {len(all_layers_text)} characters")
     print(f"Middle layers output length: {len(middle_layers_text)} characters")
-    
-    # Compare original vs all layers
-    # print("\n=== Original vs All Layers ===")
-    # if original_text == all_layers_text:
-    #     print("Outputs are IDENTICAL. INSTABOOST (all layers) did not change the generation.")
-    #     all_layers_diff = 0
-    #     all_layers_diff_pct = 0
-    # else:
-    #     print("Outputs are DIFFERENT. INSTABOOST (all layers) successfully changed the generation.")
-    #     all_layers_diff = sum(1 for a, b in zip(original_text, all_layers_text) if a != b)
-    #     max_len = max(len(original_text), len(all_layers_text))
-    #     all_layers_diff_pct = (all_layers_diff / max_len) * 100 if max_len > 0 else 0
-    #     print(f"Character-level difference: {all_layers_diff} characters ({all_layers_diff_pct:.2f}%)")
-    
-    # # Compare original vs middle layers
-    # print("\n=== Original vs Middle Layers ===")
-    # if original_text == middle_layers_text:
-    #     print("Outputs are IDENTICAL. INSTABOOST (middle layers) did not change the generation.")
-    #     middle_layers_diff = 0
-    #     middle_layers_diff_pct = 0
-    # else:
-    #     print("Outputs are DIFFERENT. INSTABOOST (middle layers) successfully changed the generation.")
-    #     middle_layers_diff = sum(1 for a, b in zip(original_text, middle_layers_text) if a != b)
-    #     max_len = max(len(original_text), len(middle_layers_text))
-    #     middle_layers_diff_pct = (middle_layers_diff / max_len) * 100 if max_len > 0 else 0
-    #     print(f"Character-level difference: {middle_layers_diff} characters ({middle_layers_diff_pct:.2f}%)")
-    
-    # # Compare all layers vs middle layers
-    # print("\n=== All Layers vs Middle Layers ===")
-    # if all_layers_text == middle_layers_text:
-    #     print("Outputs are IDENTICAL. Both INSTABOOST variants produced the same output.")
-    #     layers_diff = 0
-    #     layers_diff_pct = 0
-    # else:
-    #     print("Outputs are DIFFERENT. The two INSTABOOST variants produced different outputs.")
-    #     layers_diff = sum(1 for a, b in zip(all_layers_text, middle_layers_text) if a != b)
-    #     max_len = max(len(all_layers_text), len(middle_layers_text))
-    #     layers_diff_pct = (layers_diff / max_len) * 100 if max_len > 0 else 0
-    #     print(f"Character-level difference: {layers_diff} characters ({layers_diff_pct:.2f}%)")
     
     # Display the generated texts
     print("\n=== Original Output (model without INSTABOOST) ===")
@@ -109,7 +111,6 @@ def run_test_case(
     all_layers_model: InstaBoostTransformerLens,
     middle_layers_model: InstaBoostTransformerLens,
     test_case: Dict[str, Any],
-    run_index: int,
     model_params: Dict[str, Any]
 ) -> Dict[str, Any]:
     """
@@ -120,17 +121,17 @@ def run_test_case(
         all_layers_model: The model with INSTABOOST on all layers
         middle_layers_model: The model with INSTABOOST on middle layers only
         test_case: The test case dictionary containing the test parameters
-        run_index: The index of the current run
+        model_params: Dictionary with model parameters
         
     Returns:
         Dictionary with test results and metrics
     """
-    print(f"\n=== Running Test Case: {test_case['name']} (Run {run_index + 1}/{model_params['num_runs']}) ===")
+    print(f"\n=== Running Test Case: {test_case['name']} ===")
     # print instruction and query
     print(f"Instruction: {test_case['instruction']}")
     print(f"Query: {test_case['query']}")
     
-    # Get parameters from MODEL_PARAMS
+    # Get parameters from model_params
     multiplier = model_params["multiplier"]
     temperature = model_params["temperature"]
     max_new_tokens = model_params["max_new_tokens"]
@@ -186,7 +187,6 @@ def run_test_case(
     # Prepare results
     results = {
         "test_case": test_case["name"],
-        "run_index": run_index,
         "instruction": test_case["instruction"],
         "query": test_case["query"],
         "original_output": original_output,
@@ -197,14 +197,12 @@ def run_test_case(
     
     return results
 
-def initialize_models(model_params: Dict[str, Any],) -> Tuple[HFModel, InstaBoostTransformerLens, InstaBoostTransformerLens]:
+def initialize_models(model_params: Dict[str, Any]) -> Tuple[HFModel, InstaBoostTransformerLens, InstaBoostTransformerLens]:
     """
     Initialize all three models.
     
     Args:
-        model_name: The name of the model to load
-        model_path: The path to the local model files
-        device: The device to load the model on
+        model_params: Dictionary with model parameters
         
     Returns:
         Tuple of (original_model, all_layers_model, middle_layers_model)
@@ -246,18 +244,17 @@ def initialize_models(model_params: Dict[str, Any],) -> Tuple[HFModel, InstaBoos
     
     return original_model, all_layers_model, middle_layers_model
 
-def save_results_to_csv(results: List[Dict[str, Any]], filename: str) -> None:
+def save_results_to_csv(results: Dict[str, Any], filename: str) -> None:
     """
     Save test results to a CSV file.
     
     Args:
-        results: List of dictionaries with test results
+        results: Dictionary with test results
         filename: Name of the CSV file to save to
     """
     # Define CSV columns
     columns = [
         "test_case",
-        "run_index",
         "instruction",
         "query",
         "original_length",
@@ -272,107 +269,153 @@ def save_results_to_csv(results: List[Dict[str, Any]], filename: str) -> None:
     with open(filename, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=columns)
         writer.writeheader()
-        for result in results:
-            writer.writerow({k: result.get(k, "") for k in columns})
+        writer.writerow({k: results.get(k, "") for k in columns})
     
     print(f"Results saved to {filename}")
 
-def run_all_tests(model_params: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """
-    Run all test cases with all three models, multiple times each.
-    
-    Returns:
-        List of dictionaries with test results
-    """
-    # Initialize models
-    original_model, boosted_all_layers_model, booset_middle_layers_model = initialize_models(model_params=model_params)
-    
-    all_results = []
-    
-    # Run all test cases
-    for test_case in ALL_TEST_CASES:
-        print(f"\n=== Running Test Case: {test_case['name']} ===")
-        
-        # Run each test multiple times
-        for run_idx in range(model_params["num_runs"]):
-            results = run_test_case(
-                original_model=original_model,
-                all_layers_model=boosted_all_layers_model,
-                middle_layers_model=booset_middle_layers_model,
-                test_case=test_case,
-                run_index=run_idx,
-                model_params=model_params
-            )
-            all_results.append(results)
-    
-    return all_results
-
-
-def generate_results_filename():
+def generate_results_filename(test_case_name: str):
     """
     Generate a results filename with a counter and timestamp.
+    
+    Args:
+        test_case_name: Name of the test case
+        
     Returns:
         str: The generated filename.
     """
-
     if not os.path.exists("results"):
         os.makedirs("results")
 
-    existing_files = [f for f in os.listdir("results") if f.startswith("instaboost_results_") and f.endswith(".csv")]
+    # Create a sanitized version of the test case name for the filename
+    sanitized_name = test_case_name.lower().replace("_test", "")
+    
+    existing_files = [f for f in os.listdir("results") if f.startswith(f"custom_{sanitized_name}_") and f.endswith(".csv")]
     counters = []
     for f in existing_files:
         try:
-            counter = int(f.split("_")[2])
+            counter = int(f.split("_")[-2])
             counters.append(counter)
         except (IndexError, ValueError):
             continue
     next_counter = max(counters, default=0) + 1
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    return f"results/instaboost_results_{next_counter:03d}_{timestamp}.csv"
+    return f"results/custom_{sanitized_name}_{next_counter:03d}_{timestamp}.csv"
 
+def parse_arguments():
+    """
+    Parse command line arguments.
+    
+    Returns:
+        argparse.Namespace: The parsed arguments
+    """
+    parser = argparse.ArgumentParser(description="Run a custom INSTABOOST test")
+    
+    # Add arguments with default values
+    parser.add_argument("--test_case", type=str, choices=TEST_CASES.keys(), default="MANUFACTURING_QC_TEST",
+                        help="The test case to run (default: MANUFACTURING_QC_TEST)")
+    parser.add_argument("--model_name", type=str, default=None,
+                        help="Model name to use (default: from config.yaml)")
+    parser.add_argument("--multiplier", type=float, default=None,
+                        help="Attention multiplier for INSTABOOST (default: from config.yaml)")
+    parser.add_argument("--temperature", type=float, default=None,
+                        help="Temperature for generation (default: from config.yaml)")
+    parser.add_argument("--max_new_tokens", type=int, default=None,
+                        help="Maximum number of tokens to generate (default: from config.yaml)")
+    parser.add_argument("--num_middle_layers", type=int, default=None,
+                        help="Number of middle layers to boost (default: from config.yaml)")
+    
+    args = parser.parse_args()
+    
+    # Print which test case is being used
+    print(f"Using test case: {args.test_case}")
+    
+    return args
 
-
-if __name__ == "__main__":
-
-    # Run all tests
-    print("Running INSTABOOST tests...")
-
+def run_custom_test(args) -> Dict[str, Any]:
+    """
+    Run a custom test case with all three models.
+    
+    Args:
+        args: Command line arguments
+        
+    Returns:
+        Dictionary with test results
+    """
     # Get parameters from config.yaml or environment variables
     model_config = config.get("model", {})
     instaboost_config = config.get("instaboost", {})
     generation_config = config.get("generation", {})
-    testing_config = config.get("testing", {})
     
     # Get device from config or auto-detect
     device = get_device()
     
-    # Global parameters for the models
+    # Global parameters for the models, with command line overrides
     test_params = {
-        "model_name": os.getenv("MODEL_NAME", model_config.get("name", "meta-llama/Llama-3.2-1B-Instruct")),
+        "model_name": args.model_name if args.model_name is not None else os.getenv("MODEL_NAME", model_config.get("name", "meta-llama/Llama-3.2-1B-Instruct")),
         "device": device,
-        "multiplier": float(os.getenv("MULTIPLIER", instaboost_config.get("multiplier", 10.0))),
-        "temperature": float(os.getenv("TEMPERATURE", generation_config.get("temperature", 0.0))),
+        "multiplier": args.multiplier if args.multiplier is not None else float(os.getenv("MULTIPLIER", instaboost_config.get("multiplier", 10.0))),
+        "temperature": args.temperature if args.temperature is not None else float(os.getenv("TEMPERATURE", generation_config.get("temperature", 0.0))),
         "top_p": float(os.getenv("TOP_P", generation_config.get("top_p", 1.0))),
-        "max_new_tokens": int(os.getenv("MAX_NEW_TOKENS", generation_config.get("max_new_tokens", 150))),
-        "num_middle_layers": int(os.getenv("NUM_MIDDLE_LAYERS", instaboost_config.get("num_middle_layers", 5))),
-        "num_runs": int(os.getenv("NUM_RUNS", testing_config.get("num_runs", 1))),
+        "max_new_tokens": args.max_new_tokens if args.max_new_tokens is not None else int(os.getenv("MAX_NEW_TOKENS", generation_config.get("max_new_tokens", 150))),
+        "num_middle_layers": args.num_middle_layers if args.num_middle_layers is not None else int(os.getenv("NUM_MIDDLE_LAYERS", instaboost_config.get("num_middle_layers", 5))),
     }
     print(f"Using parameters: {test_params}")
+    
+    # Get the test case
+    test_case = TEST_CASES[args.test_case]
+    
+    # Initialize models
+    original_model, all_layers_model, middle_layers_model = initialize_models(model_params=test_params)
+    
+    # Run the test case
+    results = run_test_case(
+        original_model=original_model,
+        all_layers_model=all_layers_model,
+        middle_layers_model=middle_layers_model,
+        test_case=test_case,
+        model_params=test_params
+    )
+    
+    return results
+
+def list_available_test_cases():
+    """
+    Print a list of available test cases.
+    """
+    print("\nAvailable test cases:")
+    for name, test_case in TEST_CASES.items():
+        print(f"  {name}: {test_case['name']}")
+
+if __name__ == "__main__":
+    print("Running custom INSTABOOST test for quick experimentation...")
+    
+    # Show available test cases at the start
+    print("\nAvailable test cases:")
+    for name, test_case in TEST_CASES.items():
+        print(f"  {name}: {test_case['name']}")
+    print("\nExample usage: python run_custom_test.py --test_case MANUFACTURING_QC_TEST\n")
+    
+    # Parse command line arguments
+    args = parse_arguments()
     
     # Record start time
     start_time = time.time()
     
-    # Run tests
-    results = run_all_tests(test_params)
+    # Run the test
+    results = run_custom_test(args)
     
     # Record end time
     end_time = time.time()
     elapsed_time = end_time - start_time
-    print(f"\nTests completed in {elapsed_time:.2f} seconds")
-
+    print(f"\nTest completed in {elapsed_time:.2f} seconds")
+    
     # Generate filename with counter and timestamp
-    filename = generate_results_filename()
+    filename = generate_results_filename(args.test_case)
+    
     # Save results to CSV
     save_results_to_csv(results, filename)
     
-    print("\nINSTABOOST testing complete!")
+    print("\nCustom INSTABOOST test complete!")
+    
+    # List available test cases for future reference
+    list_available_test_cases()

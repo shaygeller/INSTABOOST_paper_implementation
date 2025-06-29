@@ -3,9 +3,10 @@
 # Random seed settings
 random_seed: 42  # Set to null for random behavior or an integer for deterministic behavior
 
+
 # Model settings
 model:
-  name: "meta-llama/Llama-3.2-1B-Instruct"
+  name: "HuggingFaceTB/SmolLM2-360M-Instruct"
   device: "auto"  # "auto", "cuda", "mps", or "cpu"
 
 # INSTABOOST parameters
