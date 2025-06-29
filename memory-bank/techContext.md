@@ -41,6 +41,28 @@
 1. **Git**: Used for version control.
    - Tracks changes to the codebase
    - Facilitates collaboration
+   - **Workflow Requirement**: Always use feature branches and pull requests
+     ```bash
+     # Create a new branch for your changes
+     git checkout -b feature/your-feature-name
+     
+     # Make changes, add, and commit them
+     git add .
+     git commit -m "Descriptive commit message"
+     
+     # Push the feature branch to GitHub
+     git push -u origin feature/your-feature-name
+     
+     # Create a pull request on GitHub
+     # After PR is merged, switch back to main
+     git checkout main
+     
+     # Pull the latest changes
+     git pull origin main
+     
+     # For new changes, create a new branch (don't reuse old branches)
+     git checkout -b feature/next-feature-name
+     ```
 
 2. **VSCode**: Recommended IDE for development.
    - Provides Python language support
