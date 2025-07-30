@@ -6,7 +6,7 @@ random_seed: 42  # Set to null for random behavior or an integer for determinist
 
 # Model settings
 model:
-  name: "HuggingFaceTB/SmolLM2-360M-Instruct"
+  name: "mistralai/Mistral-7B-Instruct-v0.1"
   device: "auto"  # "auto", "cuda", "mps", or "cpu"
 
 # INSTABOOST parameters
