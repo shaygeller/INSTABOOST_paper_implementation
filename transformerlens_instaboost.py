@@ -34,7 +34,7 @@ class InstaBoostTransformerLens:
     
     This implementation follows the paper's description of modifying attention scores
     to increase focus on instruction tokens during generation.
-    """
+    """ 
     
     def __init__(
         self,

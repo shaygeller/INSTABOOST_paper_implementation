@@ -20,10 +20,10 @@ else:
 models = [
     # Big Models (~7B+)
     "meta-llama/Llama-3.2-1B-Instruct",
-    "mistralai/Mistral-7B-Instruct-v0.3",
+    "mistralai/Mistral-7B-Instruct-v0.1",
     "Qwen/Qwen1.5-7B-Chat",
-    "microsoft/Phi-3-mini-4k-instruct",
-    
+    # "microsoft/Phi-3-mini-4k-instruct",
+
     # Medium Models (<=1B)
     "Qwen/Qwen2.5-0.5B-Instruct",
 
@@ -41,3 +41,6 @@ for repo_id in models:
         print(f"✓ Downloaded {repo_id} at {path}")
     except Exception as e:
         print(f"❌ Error downloading {repo_id}: {e}")
+
+
+

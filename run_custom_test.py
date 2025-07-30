@@ -29,6 +29,7 @@ from dotenv import load_dotenv
 from huggingface_hub import login
 from typing import Dict, Tuple, List, Any
 from utils import load_config, get_device
+from model_utils import initialize_models
 
 # Set SSL context for HTTPS connections
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -197,52 +198,6 @@ def run_test_case(
     
     return results
 
-def initialize_models(model_params: Dict[str, Any]) -> Tuple[HFModel, InstaBoostTransformerLens, InstaBoostTransformerLens]:
-    """
-    Initialize all three models.
-    
-    Args:
-        model_params: Dictionary with model parameters
-        
-    Returns:
-        Tuple of (original_model, all_layers_model, middle_layers_model)
-    """
-    print("Initializing models...")
-    
-    # Load environment variables for Hugging Face token
-    load_dotenv()
-    
-    # Login to Hugging Face (if needed)
-    huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
-    if huggingface_token:
-        login(token=huggingface_token, add_to_git_credential=False)
-    
-    # Initialize the original model
-    print("Initializing original model...")
-    original_model = HFModel(
-        model_name=model_params["model_name"],
-        device=model_params["device"]
-    )
-    
-    # Initialize the all layers INSTABOOST model
-    print("Initializing INSTABOOST model (all layers)...")
-    all_layers_model = InstaBoostTransformerLens(
-        model_name=model_params["model_name"],
-        device=model_params["device"],
-        boost_middle_layers_only=False,
-        num_middle_layers=model_params["num_middle_layers"]
-    )
-    
-    # Initialize the middle layers INSTABOOST model
-    print("Initializing INSTABOOST model (middle layers only)...")
-    middle_layers_model = InstaBoostTransformerLens(
-        model_name=model_params["model_name"],
-        device=model_params["device"],
-        boost_middle_layers_only=True,
-        num_middle_layers=model_params["num_middle_layers"]
-    )
-    
-    return original_model, all_layers_model, middle_layers_model
 
 def save_results_to_csv(results: Dict[str, Any], filename: str) -> None:
     """
